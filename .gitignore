@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# PyCharm
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dados - não versionar brutos
+data/raw/
+data/external/
+
+# Relatórios gerados
+reports/figures/
+reports/tables/
+
+# Outros
+.DS_Store
