@@ -2,18 +2,25 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-from src.config import PROCESSED_DATA_DIR
-from src.data_preprocessing import PROCESSED_FILENAME
+# Configuração direta dos caminhos (sem depender do src.config)
+BASE_DIR = Path(__file__).parent
+PROCESSED_DATA_DIR = BASE_DIR / "data" / "processed"
+PROCESSED_FILENAME = "amazon_sales_clean.csv"
 
 
 @st.cache_data
-df = load_processed_data()
+def load_processed_data() -> pd.DataFrame:
     """
-    Carrega o CSV já processado a partir de data/processed.
-    No Streamlit Cloud, assumimos que o arquivo já está versionado no repositório.
+    Carrega o CSV processado diretamente do repositório.
     """
     path = PROCESSED_DATA_DIR / PROCESSED_FILENAME
+
+    if not path.exists():
+        st.error(f"Arquivo de dados não encontrado: {path}")
+        st.stop()
+
     df = pd.read_csv(path, parse_dates=["order_date"])
     return df
 
@@ -25,7 +32,7 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    st.title("Amazon Sales Analysis")
+    st.title("🛒 Amazon Sales Analysis")
     st.markdown(
         """
         Dashboard interativo de vendas da Amazon, baseado em dataset público do Kaggle.
@@ -33,7 +40,11 @@ def main():
     )
 
     # Carregar dados
-    df = load_or_create_processed_data()
+    try:
+        df = load_processed_data()
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        st.stop()
 
     # Filtros na barra lateral
     st.sidebar.header("Filtros")
@@ -72,15 +83,15 @@ def main():
     avg_rating = df["rating"].mean()
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Receita Total", f"${total_revenue:,.2f}")
-    col2.metric("Nº de Pedidos", f"{total_orders:,}")
-    col3.metric("Ticket Médio", f"${avg_ticket:,.2f}")
-    col4.metric("Rating Médio", f"{avg_rating:.2f}")
+    col1.metric("💰 Receita Total", f"${total_revenue:,.2f}")
+    col2.metric("📦 Nº de Pedidos", f"{total_orders:,}")
+    col3.metric("🎫 Ticket Médio", f"${avg_ticket:,.2f}")
+    col4.metric("⭐ Rating Médio", f"{avg_rating:.2f}")
 
     st.markdown("---")
 
     # Gráfico 1: Tendência de receita no tempo
-    st.subheader("Tendência de Receita Mensal")
+    st.subheader("📈 Tendência de Receita Mensal")
 
     df_temp = df.copy()
     df_temp["year_month"] = df_temp["order_date"].dt.to_period("M").dt.to_timestamp()
@@ -99,7 +110,7 @@ def main():
     st.pyplot(fig1)
 
     # Gráfico 2: Top categorias por receita
-    st.subheader("Top Categorias por Receita")
+    st.subheader("🏆 Top Categorias por Receita")
 
     top_n = st.slider("Top N categorias", min_value=5, max_value=20, value=10, step=1)
     cat_revenue = (
@@ -117,7 +128,7 @@ def main():
     st.pyplot(fig2)
 
     # Gráfico 3: Receita por região
-    st.subheader("Receita por Região")
+    st.subheader("🌎 Receita por Região")
 
     region_revenue = (
         df.groupby("customer_region")["total_revenue"]
@@ -133,8 +144,15 @@ def main():
     st.pyplot(fig3)
 
     # Tabela detalhada
-    st.subheader("Amostra de Dados Filtrados")
+    st.subheader("📋 Amostra de Dados Filtrados")
     st.dataframe(df.head(50))
+
+    # Informações do dataset
+    with st.expander("📊 Informações do Dataset"):
+        st.write(f"**Total de registros:** {len(df):,}")
+        st.write(f"**Período:** {df['order_date'].min().date()} a {df['order_date'].max().date()}")
+        st.write(f"**Categorias únicas:** {df['product_category'].nunique()}")
+        st.write(f"**Regiões:** {df['customer_region'].nunique()}")
 
 
 if __name__ == "__main__":
