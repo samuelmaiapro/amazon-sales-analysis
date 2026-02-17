@@ -4,29 +4,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from src.config import PROCESSED_DATA_DIR
-from src.data_ingestion import download_amazon_sales_dataset
-from src.data_preprocessing import (
-    load_raw_sales_data,
-    clean_sales_data,
-    save_processed_data,
-    PROCESSED_FILENAME,
-)
+from src.data_preprocessing import PROCESSED_FILENAME
 
 
 @st.cache_data
-def load_or_create_processed_data() -> pd.DataFrame:
+df = load_processed_data()
     """
-    Para ambiente local: se o CSV processado não existir,
-    baixa do Kaggle e processa.
-    No Streamlit Cloud, idealmente você já versiona o CSV pronto.
+    Carrega o CSV já processado a partir de data/processed.
+    No Streamlit Cloud, assumimos que o arquivo já está versionado no repositório.
     """
     path = PROCESSED_DATA_DIR / PROCESSED_FILENAME
-    if not path.exists():
-        # Atenção: no Streamlit Cloud, isso exige configurar credenciais do Kaggle
-        download_amazon_sales_dataset()
-        raw_df = load_raw_sales_data()
-        clean_df = clean_sales_data(raw_df)
-        save_processed_data(clean_df)
     df = pd.read_csv(path, parse_dates=["order_date"])
     return df
 
