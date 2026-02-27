@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
 import calendar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 
 # Configuração da página - MODO ULTRA WIDE
@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS customizado para dark mode elegante
+# CSS customizado para dark mode elegante com sidebar mais clara
 st.markdown("""
 <style>
     .main-header {
@@ -66,6 +66,71 @@ st.markdown("""
         background-color: #FF9900;
         color: white !important;
     }
+
+    /* Ajustes para melhor visibilidade da logo */
+    .sidebar-logo {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Melhorar contraste dos textos na sidebar */
+    .css-1d391kg, .css-163ttbj, .stSidebar .stRadio label {
+        color: #ffffff !important;
+    }
+
+    /* Fundo mais escuro para sidebar para destacar a logo */
+    .stSidebar {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    /* Ajuste para os títulos na sidebar */
+    .stSidebar h1, .stSidebar h2, .stSidebar h3 {
+        color: #FF9900 !important;
+    }
+
+    /* Melhorar visibilidade dos elementos da sidebar */
+    .stSidebar .stSelectbox label, .stSidebar .stRadio label {
+        color: #cccccc !important;
+        font-weight: 500;
+    }
+
+    .stSidebar .stSelectbox div[data-baseweb="select"] {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: #FF9900;
+    }
+
+    /* Container da logo com fundo branco */
+    .logo-container {
+        background-color: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        text-align: center;
+        border: 2px solid #FF9900;
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Métricas com melhor contraste */
+    .metric-container {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 5px solid #FF9900;
+        color: white;
+    }
+
+    /* Footer da sidebar */
+    .sidebar-footer {
+        background: rgba(255, 153, 0, 0.2);
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 30px;
+        border: 1px solid #FF9900;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -107,9 +172,17 @@ def main():
         st.error(f"🚨 Erro ao carregar dados: {e}")
         st.stop()
 
-    # SIDEBAR - Filtros Avançados
+    # SIDEBAR - Filtros Avançados com logo melhorada
     with st.sidebar:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg", width=200)
+        # Container especial para a logo com fundo branco
+        st.markdown("""
+        <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" 
+                 style="width: 180px; height: auto;" 
+                 alt="Amazon Logo">
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("## 🎯 Filtros")
 
         # Date range com quick selects - VERSÃO CORRIGIDA
@@ -142,7 +215,7 @@ def main():
             # Encontrar o primeiro dia do trimestre atual
             current_quarter = (today.month - 1) // 3 + 1
             first_month_current_quarter = (current_quarter - 1) * 3 + 1
-            first_day_current_quarter = date(today.year, first_month_current_quarter, 1)
+            first_day_current_quarter = datetime(today.year, first_month_current_quarter, 1).date()
 
             # Último dia do trimestre anterior
             end_date = first_day_current_quarter - timedelta(days=1)
@@ -152,11 +225,11 @@ def main():
 
         elif date_range_type == "Último Ano":
             # Primeiro dia do ano atual
-            first_day_current_year = date(today.year, 1, 1)
+            first_day_current_year = datetime(today.year, 1, 1).date()
             # Último dia do ano anterior
             end_date = first_day_current_year - timedelta(days=1)
             # Primeiro dia do ano anterior
-            start_date = date(today.year - 1, 1, 1)
+            start_date = datetime(today.year - 1, 1, 1).date()
 
         elif date_range_type == "Customizado":
             date_range = st.date_input(
@@ -199,10 +272,15 @@ def main():
         if selected_payment != 'Todos':
             df_filtered = df_filtered[df_filtered['payment_method'] == selected_payment]
 
-        # KPIs rápidos do filtro
+        # KPIs rápidos do filtro com estilo melhorado
         st.markdown("---")
-        st.markdown(f"### 📊 Amostra: {len(df_filtered):,} registros")
-        st.markdown(f"📅 {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
+        st.markdown("""
+        <div class="sidebar-footer">
+            <h4 style='color: #FF9900; margin-top: 0;'>📊 Resumo do Filtro</h4>
+        """, unsafe_allow_html=True)
+        st.markdown(f"**Registros:** {len(df_filtered):,}")
+        st.markdown(f"**Período:** {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # MAIN CONTENT - Tabs organizadas
     tab1, tab2, tab3, tab4 = st.tabs([
