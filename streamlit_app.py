@@ -68,18 +68,14 @@ st.markdown("""
     }
 
     /* Ajustes para melhor visibilidade da logo */
-    .sidebar-logo {
+    .logo-container {
         background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Melhorar contraste dos textos na sidebar */
-    .css-1d391kg, .css-163ttbj, .stSidebar .stRadio label {
-        color: #ffffff !important;
+        border: 2px solid #FF9900;
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
     }
 
     /* Fundo mais escuro para sidebar para destacar a logo */
@@ -101,26 +97,6 @@ st.markdown("""
     .stSidebar .stSelectbox div[data-baseweb="select"] {
         background-color: rgba(255, 255, 255, 0.1);
         border-color: #FF9900;
-    }
-
-    /* Container da logo com fundo branco */
-    .logo-container {
-        background-color: white;
-        padding: 25px;
-        border-radius: 15px;
-        margin-bottom: 25px;
-        text-align: center;
-        border: 2px solid #FF9900;
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Métricas com melhor contraste */
-    .metric-container {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        padding: 20px;
-        border-radius: 15px;
-        border-left: 5px solid #FF9900;
-        color: white;
     }
 
     /* Footer da sidebar */
@@ -202,7 +178,7 @@ def main():
         # Data atual para referência
         today = datetime.now().date()
 
-        # CORREÇÃO: Lógica simplificada para cada tipo de período
+        # CORREÇÃO: Lógica corrigida para cada tipo de período
         if date_range_type == "Último Mês":
             # Primeiro dia do mês atual
             first_day_current_month = today.replace(day=1)
@@ -214,22 +190,22 @@ def main():
         elif date_range_type == "Último Trimestre":
             # Encontrar o primeiro dia do trimestre atual
             current_quarter = (today.month - 1) // 3 + 1
-            first_month_current_quarter = (current_quarter - 1) * 3 + 1
-            first_day_current_quarter = datetime(today.year, first_month_current_quarter, 1).date()
+            first_month_current_quarter = ((current_quarter - 1) * 3) + 1
+            first_day_current_quarter = date(today.year, first_month_current_quarter, 1)
 
             # Último dia do trimestre anterior
             end_date = first_day_current_quarter - timedelta(days=1)
-            # Primeiro dia do trimestre anterior
-            first_day_prev_quarter = (end_date.replace(day=1) - relativedelta(months=2)).replace(day=1)
-            start_date = first_day_prev_quarter
+            # Primeiro dia do trimestre anterior (3 meses antes)
+            start_date = end_date.replace(day=1) - relativedelta(months=2)
+            start_date = start_date.replace(day=1)
 
         elif date_range_type == "Último Ano":
             # Primeiro dia do ano atual
-            first_day_current_year = datetime(today.year, 1, 1).date()
+            first_day_current_year = date(today.year, 1, 1)
             # Último dia do ano anterior
             end_date = first_day_current_year - timedelta(days=1)
             # Primeiro dia do ano anterior
-            start_date = datetime(today.year - 1, 1, 1).date()
+            start_date = date(today.year - 1, 1, 1)
 
         elif date_range_type == "Customizado":
             date_range = st.date_input(
@@ -246,6 +222,11 @@ def main():
         start_date = max(start_date, min_date)
         end_date = min(end_date, max_date)
 
+        # Garantir que start_date é menor que end_date
+        if start_date > end_date:
+            start_date, end_date = min_date, max_date
+            st.warning("⚠️ Período selecionado inválido. Mostrando todo o período.")
+
         # Converter para datetime para filtrar
         start_datetime = pd.to_datetime(start_date)
         end_datetime = pd.to_datetime(end_date) + pd.DateOffset(days=1) - pd.DateOffset(
@@ -254,23 +235,28 @@ def main():
         df_filtered = df[(df['order_date'] >= start_datetime) &
                          (df['order_date'] <= end_datetime)]
 
-        # Filtros multiselect
-        regions = ['Todas'] + sorted(df['customer_region'].unique().tolist())
+        # Filtros multiselect - usar valores únicos do df_filtered para mostrar apenas opções disponíveis
+        if not df_filtered.empty:
+            regions = ['Todas'] + sorted(df_filtered['customer_region'].unique().tolist())
+            categories = ['Todas'] + sorted(df_filtered['product_category'].unique().tolist())
+            payment_methods = ['Todos'] + sorted(df_filtered['payment_method'].unique().tolist())
+        else:
+            regions = ['Todas']
+            categories = ['Todas']
+            payment_methods = ['Todos']
+
         selected_region = st.selectbox("📍 Região", regions)
-
-        categories = ['Todas'] + sorted(df['product_category'].unique().tolist())
         selected_category = st.selectbox("📦 Categoria", categories)
-
-        payment_methods = ['Todos'] + sorted(df['payment_method'].unique().tolist())
         selected_payment = st.selectbox("💳 Método de Pagamento", payment_methods)
 
-        # Aplicar filtros
-        if selected_region != 'Todas':
-            df_filtered = df_filtered[df_filtered['customer_region'] == selected_region]
-        if selected_category != 'Todas':
-            df_filtered = df_filtered[df_filtered['product_category'] == selected_category]
-        if selected_payment != 'Todos':
-            df_filtered = df_filtered[df_filtered['payment_method'] == selected_payment]
+        # Aplicar filtros apenas se houver dados
+        if not df_filtered.empty:
+            if selected_region != 'Todas':
+                df_filtered = df_filtered[df_filtered['customer_region'] == selected_region]
+            if selected_category != 'Todas':
+                df_filtered = df_filtered[df_filtered['product_category'] == selected_category]
+            if selected_payment != 'Todos':
+                df_filtered = df_filtered[df_filtered['payment_method'] == selected_payment]
 
         # KPIs rápidos do filtro com estilo melhorado
         st.markdown("---")
@@ -290,59 +276,75 @@ def main():
         "🎯 **Insights Estratégicos**"
     ])
 
-    with tab1:
-        # Métricas principais com design melhorado
-        col1, col2, col3, col4 = st.columns(4)
+    # Verificar se há dados para exibir
+    if df_filtered.empty:
+        for tab in [tab1, tab2, tab3, tab4]:
+            with tab:
+                st.warning("""
+                ⚠️ **Nenhum dado encontrado para o período e filtros selecionados.**
 
-        with col1:
-            total_revenue = df_filtered['total_revenue'].sum()
-            st.metric(
-                "💰 Receita Total",
-                f"${total_revenue:,.0f}",
-                delta=f"{((total_revenue / df['total_revenue'].sum()) * 100):.1f}% do total",
-                delta_color="normal"
-            )
+                Possíveis causas:
+                - O período selecionado pode não conter dados
+                - Os filtros de região, categoria ou pagamento podem ser muito restritivos
+                - Os dados podem não existir para a combinação de filtros escolhida
 
-        with col2:
-            total_orders = df_filtered['order_id'].nunique()
-            # Calcular período anterior apenas se houver dados suficientes
-            if len(df_filtered) > 0 and date_range_type != "Todo Período":
-                period_days = (end_datetime - start_datetime).days
-                prev_start = start_datetime - relativedelta(days=period_days)
-                prev_end = start_datetime - timedelta(seconds=1)
+                **Sugestões:**
+                - Tente um período diferente
+                - Selecione "Todas" nas opções de filtro
+                - Verifique se há dados disponíveis no período selecionado
+                """)
+    else:
+        with tab1:
+            # Métricas principais com design melhorado
+            col1, col2, col3, col4 = st.columns(4)
 
-                prev_period = df[(df['order_date'] >= prev_start) &
-                                 (df['order_date'] <= prev_end)]['order_id'].nunique()
-                growth = ((total_orders - prev_period) / prev_period * 100) if prev_period > 0 else 0
-            else:
-                growth = 0
+            with col1:
+                total_revenue = df_filtered['total_revenue'].sum()
+                st.metric(
+                    "💰 Receita Total",
+                    f"${total_revenue:,.0f}",
+                    delta=f"{((total_revenue / df['total_revenue'].sum()) * 100):.1f}% do total",
+                    delta_color="normal"
+                )
 
-            st.metric(
-                "📦 Total Pedidos",
-                f"{total_orders:,}",
-                delta=f"{growth:.1f}% vs período anterior",
-                delta_color="inverse" if growth < 0 else "normal"
-            )
+            with col2:
+                total_orders = df_filtered['order_id'].nunique()
+                # Calcular período anterior apenas se houver dados suficientes
+                if len(df_filtered) > 0 and date_range_type != "Todo Período":
+                    period_days = (end_datetime - start_datetime).days
+                    prev_start = start_datetime - relativedelta(days=period_days)
+                    prev_end = start_datetime - timedelta(seconds=1)
 
-        with col3:
-            avg_ticket = total_revenue / total_orders if total_orders > 0 else 0
-            st.metric(
-                "🎫 Ticket Médio",
-                f"${avg_ticket:,.2f}",
-                delta=f"${df_filtered['revenue_per_unit'].mean():,.2f} por unidade" if len(df_filtered) > 0 else "$0.00"
-            )
+                    prev_period = df[(df['order_date'] >= prev_start) &
+                                     (df['order_date'] <= prev_end)]['order_id'].nunique()
+                    growth = ((total_orders - prev_period) / prev_period * 100) if prev_period > 0 else 0
+                else:
+                    growth = 0
 
-        with col4:
-            avg_rating = df_filtered['rating'].mean() if len(df_filtered) > 0 else 0
-            high_rating_pct = (df_filtered['rating'] >= 4).mean() * 100 if len(df_filtered) > 0 else 0
-            st.metric(
-                "⭐ Rating Médio",
-                f"{avg_rating:.2f}",
-                delta=f"{high_rating_pct:.1f}% ⭐⭐⭐⭐"
-            )
+                st.metric(
+                    "📦 Total Pedidos",
+                    f"{total_orders:,}",
+                    delta=f"{growth:.1f}% vs período anterior",
+                    delta_color="inverse" if growth < 0 else "normal"
+                )
 
-        # Verificar se há dados para exibir gráficos
-        if len(df_filtered) > 0:
+            with col3:
+                avg_ticket = total_revenue / total_orders if total_orders > 0 else 0
+                st.metric(
+                    "🎫 Ticket Médio",
+                    f"${avg_ticket:,.2f}",
+                    delta=f"${df_filtered['revenue_per_unit'].mean():,.2f} por unidade"
+                )
+
+            with col4:
+                avg_rating = df_filtered['rating'].mean()
+                high_rating_pct = (df_filtered['rating'] >= 4).mean() * 100
+                st.metric(
+                    "⭐ Rating Médio",
+                    f"{avg_rating:.2f}",
+                    delta=f"{high_rating_pct:.1f}% ⭐⭐⭐⭐"
+                )
+
             # Gráficos em grid
             col1, col2 = st.columns(2)
 
@@ -361,8 +363,6 @@ def main():
                     fig.update_traces(textposition='inside', textinfo='percent+label')
                     fig.update_layout(showlegend=False)
                     st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("Sem dados de região para o período selecionado")
 
             with col2:
                 # Métodos de Pagamento
@@ -378,8 +378,6 @@ def main():
                     )
                     fig.update_layout(xaxis_title="", yaxis_title="Receita ($)")
                     st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("Sem dados de pagamento para o período selecionado")
 
             # Timeline interativa
             daily_revenue = df_filtered.groupby('order_date')['total_revenue'].sum().reset_index()
@@ -394,15 +392,10 @@ def main():
                 fig.update_traces(line_color='#FF9900', line_width=3)
                 fig.update_layout(hovermode='x unified')
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("Sem dados diários para o período selecionado")
-        else:
-            st.warning("⚠️ Nenhum dado encontrado para o período e filtros selecionados")
 
-    with tab2:
-        st.subheader("💰 Análise Financeira Detalhada")
+        with tab2:
+            st.subheader("💰 Análise Financeira Detalhada")
 
-        if len(df_filtered) > 0:
             col1, col2 = st.columns(2)
 
             with col1:
@@ -437,11 +430,7 @@ def main():
                             )
                             fig.update_layout(height=500)
                             st.plotly_chart(fig, use_container_width=True)
-                        else:
-                            st.info("Dados insuficientes para o mapa de calor")
-                    else:
-                        st.info("Sem dados suficientes para o mapa de calor")
-                except Exception as e:
+                except:
                     st.info("Não foi possível gerar o mapa de calor para o período selecionado")
 
             with col2:
@@ -468,8 +457,6 @@ def main():
                         fig.update_yaxes(title_text="Receita Total ($)", secondary_y=False)
                         fig.update_yaxes(title_text="Ticket Médio ($)", secondary_y=True)
                         st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.info("Sem dados de desconto para análise")
 
             # Top produtos por receita
             st.subheader("🏆 Top 10 Produtos por Receita")
@@ -503,17 +490,10 @@ def main():
                             use_container_width=True,
                             height=400
                         )
-                else:
-                    st.info("Sem dados de produtos para o período selecionado")
-            else:
-                st.info("Coluna 'product_id' não encontrada nos dados")
-        else:
-            st.warning("⚠️ Nenhum dado encontrado para o período e filtros selecionados")
 
-    with tab3:
-        st.subheader("📦 Análise de Performance por Categoria")
+        with tab3:
+            st.subheader("📦 Análise de Performance por Categoria")
 
-        if len(df_filtered) > 0:
             # Métricas por categoria
             category_metrics = df_filtered.groupby('product_category').agg({
                 'total_revenue': 'sum',
@@ -563,15 +543,10 @@ def main():
                     use_container_width=True,
                     height=400
                 )
-            else:
-                st.info("Sem dados de categoria para o período selecionado")
-        else:
-            st.warning("⚠️ Nenhum dado encontrado para o período e filtros selecionados")
 
-    with tab4:
-        st.subheader("🎯 Insights Estratégicos")
+        with tab4:
+            st.subheader("🎯 Insights Estratégicos")
 
-        if len(df_filtered) > 0:
             # Cálculos para insights
             total_revenue_filtered = df_filtered['total_revenue'].sum()
             total_revenue_full = df['total_revenue'].sum()
@@ -644,7 +619,7 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Gráfico de tendência - VERSÃO CORRIGIDA
+                # Gráfico de tendência
                 st.markdown("### 🔮 Tendência Mensal")
 
                 # Agrupar por mês de forma segura
@@ -677,10 +652,6 @@ def main():
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("Sem dados suficientes para mostrar tendência mensal")
-        else:
-            st.warning("⚠️ Nenhum dado encontrado para o período e filtros selecionados")
 
 
 if __name__ == "__main__":
